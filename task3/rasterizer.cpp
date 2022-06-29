@@ -269,31 +269,65 @@ void rst::rasterizer::rasterize_triangle(const Triangle& t, const std::array<Eig
     // float zp = alpha * v[0].z() / v[0].w() + beta * v[1].z() / v[1].w() + gamma * v[2].z() / v[2].w();
     // zp *= Z;
 
-    auto v = t.toVector4();
-    for (int i = 0; i < width; i++) {
-        for (int j = 0; j < height; j++) {
-            if (insideTriangle(i, j, t.v)) {
-                // If so, use the following code to get the interpolated z value.
-                auto [alpha, beta, gamma] = computeBarycentric2D(i+0.5, j+0.5, t.v);
-                float Z = 1.0 / (alpha / v[0].w() + beta / v[1].w() + gamma / v[2].w());
-                float zp = alpha * v[0].z() / v[0].w() + beta * v[1].z() / v[1].w() + gamma * v[2].z() / v[2].w();
-                zp *= Z;
+     auto v = t.toVector4();
+    int xmin = 0;
+    int xmax = 0;
+    int ymin = 0;
+    int ymax = 0;
+    float xminf = t.v[0].x();
+    float xmaxf = t.v[0].x();
+    float yminf= t.v[0].y();
+    float ymaxf = t.v[0].y();
 
-                auto interpolated_color = interpolate(alpha, beta, gamma, t.color[0], t.color[1], t.color[2], 1.0);
-                auto interpolated_normal = interpolate(alpha, beta, gamma, t.normal[0], t.normal[1], t.normal[2], 1.0);
-                auto interpolated_texcoords = interpolate(alpha, beta, gamma, t.tex_coords[0], t.tex_coords[1], t.tex_coords[2], 1.0);
-                auto interpolated_shadingcoords = interpolate(alpha, beta, gamma, view_pos[0], view_pos[1], view_pos[2], 1.0);
-                
-                fragment_shader_payload payload( interpolated_color, interpolated_normal.normalized(), interpolated_texcoords, texture ? &*texture : nullptr);
+    for(int i =0;i<3;i++)
+    {
+        if(v[i].x()<xminf) xminf = t.v[i].x();
+        if(v[i].x()>xmaxf) xmaxf = t.v[i].x();
+        if(v[i].y()<yminf) yminf = t.v[i].y();
+        if(v[i].y()>ymaxf) ymaxf = t.v[i].y();
+    }
+    xmin = xminf;
+    xmax = xmaxf +1;
+    ymin = yminf;
+    ymax = ymaxf +1;
+
+    // TODO: From your HW3, get the triangle rasterization code.
+    // TODO: Inside your rasterization loop:
+    //    * v[i].w() is the vertex view space depth value z.
+    //    * Z is interpolated view space depth for the current pixel
+    //    * zp is depth between zNear and zFar, used for z-buffer
+
+    // float Z = 1.0 / (alpha / v[0].w() + beta / v[1].w() + gamma / v[2].w());
+    // float zp = alpha * v[0].z() / v[0].w() + beta * v[1].z() / v[1].w() + gamma * v[2].z() / v[2].w();
+    // zp *= Z;
+
+    for(int i = xmin;i<xmax;i++)
+    {
+        for(int j = ymin;j<ymax;j++)
+        {
+            if(insideTriangle(i+0.5,j+0.5,t.v)) 
+            {
+                //Depth interpolated
+            auto[alpha, beta, gamma] = computeBarycentric2D(i+0.5, j+0.5, t.v);
+
+            float Z = 1.0 / (alpha / v[0].w() + beta / v[1].w() + gamma / v[2].w());
+            float zp = alpha * v[0].z() / v[0].w() + beta * v[1].z() / v[1].w() + gamma * v[2].z() / v[2].w();
+            zp*=Z;
+
+            if(zp < depth_buf[get_index(i,j)])
+            {
+                depth_buf[get_index(i,j)] = zp;
+                auto interpolated_color = interpolate(alpha, beta, gamma, t.color[0], t.color[1], t.color[2], 1);
+                auto interpolated_normal = interpolate(alpha, beta, gamma,t.normal[0],t.normal[1],t.normal[2],1).normalized();
+                auto interpolated_texcoords = interpolate(alpha, beta, gamma,t.tex_coords[0],t.tex_coords[1],t.tex_coords[2],1);
+                auto interpolated_shadingcoords = interpolate(alpha, beta, gamma,view_pos[0],view_pos[1],view_pos[2],1);
+                fragment_shader_payload payload(interpolated_color,interpolated_normal,interpolated_texcoords,texture ? &*texture : nullptr);
                 payload.view_pos = interpolated_shadingcoords;
                 auto pixel_color = fragment_shader(payload);
-
-                auto ind = get_index(i, j);
-                if (zp < depth_buf[ind]) {
-                    depth_buf[ind] = zp;
-                    set_pixel({ i,j }, pixel_color);
-                }
+                set_pixel(Eigen::Vector2i(i,j),pixel_color);
             }
+            }
+            
         }
     }
 

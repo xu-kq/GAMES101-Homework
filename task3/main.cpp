@@ -54,7 +54,7 @@ Eigen::Matrix4f get_projection_matrix(float eye_fov, float aspect_ratio, float z
 
     float t, b, l, r, n, f;
 
-    t = std::tan(eye_fov / 180.f * MY_PI / 2) * zNear;
+    t = -std::tan(eye_fov / 180.f * MY_PI / 2) * zNear;
     b = -t;
     l = aspect_ratio * b;
     r = -l;
@@ -136,6 +136,8 @@ Eigen::Vector3f texture_fragment_shader(const fragment_shader_payload& payload)
     Eigen::Vector3f ambient, diffuse, specular;
     Eigen::Vector3f l, v, h;
     float r;
+    
+    ambient = ka.cwiseProduct(amb_light_intensity);
 
     for (auto& light : lights)
     {
@@ -144,15 +146,16 @@ Eigen::Vector3f texture_fragment_shader(const fragment_shader_payload& payload)
         l = (light.position - point).normalized();
         v = (eye_pos - point).normalized();
         h = (l + v).normalized();
+        normal = normal.normalized();
 
         r = (point - light.position).norm();
-        ambient = ka.cwiseProduct(amb_light_intensity);
-        diffuse = kd.cwiseProduct((light.intensity / r * r) * std::max(0.f, l.dot(normal)));
-        specular = ks.cwiseProduct((light.intensity / r * r) * std::pow(std::max(0.f, h.dot(normal)), p));
 
-        result_color += ambient + diffuse + specular;
+        diffuse = kd.cwiseProduct((light.intensity / (r * r)) * std::max(0.f, l.dot(normal)));
+        specular = ks.cwiseProduct((light.intensity / (r * r)) * std::pow(std::max(0.f, h.dot(normal)), p));
+
+        result_color +=  diffuse + specular;
     }
-
+    result_color += ambient;
     return result_color * 255.f;
 }
 
@@ -188,14 +191,16 @@ Eigen::Vector3f phong_fragment_shader(const fragment_shader_payload& payload)
         l = (light.position - point).normalized();
         v = (eye_pos - point).normalized();
         h = (l + v).normalized();
+        normal = normal.normalized();
 
         r = (point - light.position).norm();
         ambient = ka.cwiseProduct(amb_light_intensity);
         diffuse = kd.cwiseProduct((light.intensity / r * r) * std::max(0.f, l.dot(normal)));
         specular = ks.cwiseProduct((light.intensity / r * r) * std::pow(std::max(0.f, h.dot(normal)), p));
 
-        result_color += ambient + diffuse + specular;
+        result_color +=  diffuse + specular;
     }
+    result_color += ambient;
 
     return result_color * 255.f;
 }
@@ -299,10 +304,11 @@ int main(int argc, const char** argv)
 
     std::string filename = "output.png";
     objl::Loader Loader;
-    std::string obj_path = "C:\\Users\\xukq\\Desktop\\outer\\graphics\\assignment\\Hw3\\Code\\models\\spot\\";
-
+    std::string obj_path = "../models/spot/";
+    
     // Load .obj File
-    bool loadout = Loader.LoadFile("C:\\Users\\xukq\\Desktop\\outer\\graphics\\assignment\\Hw3\\Code\\models\\spot\\spot_triangulated_good.obj");
+    bool loadout = Loader.LoadFile("../models/spot/spot_triangulated_good.obj");
+    
     for(auto mesh:Loader.LoadedMeshes)
     {
         for(int i=0;i<mesh.Vertices.size();i+=3)

@@ -1,0 +1,3 @@
+/home/xukq/Documents/graphics/games101/GAMES101-Homework/task3/build/CMakeFiles/Rasterizer.dir
+/home/xukq/Documents/graphics/games101/GAMES101-Homework/task3/build/CMakeFiles/edit_cache.dir
+/home/xukq/Documents/graphics/games101/GAMES101-Homework/task3/build/CMakeFiles/rebuild_cache.dir
