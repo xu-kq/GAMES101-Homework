@@ -269,28 +269,19 @@ void rst::rasterizer::rasterize_triangle(const Triangle& t, const std::array<Eig
     // float zp = alpha * v[0].z() / v[0].w() + beta * v[1].z() / v[1].w() + gamma * v[2].z() / v[2].w();
     // zp *= Z;
 
-     auto v = t.toVector4();
-    int xmin = 0;
-    int xmax = 0;
-    int ymin = 0;
-    int ymax = 0;
-    float xminf = t.v[0].x();
-    float xmaxf = t.v[0].x();
-    float yminf= t.v[0].y();
-    float ymaxf = t.v[0].y();
+    auto v = t.toVector4();
+    float xmin = t.v[0].x(),
+          xmax = t.v[0].x(),
+          ymin = t.v[0].y(),
+          ymax = t.v[0].y();
 
-    for(int i =0;i<3;i++)
-    {
-        if(v[i].x()<xminf) xminf = t.v[i].x();
-        if(v[i].x()>xmaxf) xmaxf = t.v[i].x();
-        if(v[i].y()<yminf) yminf = t.v[i].y();
-        if(v[i].y()>ymaxf) ymaxf = t.v[i].y();
+    for(int i = 1; i < 3; i++){
+        xmin = xmin < t.v[i].x() ? xmin : t.v[i].x();
+        ymin = ymin < t.v[i].y() ? ymin : t.v[i].y();
+
+        xmax = xmax > t.v[i].x() ? xmax : t.v[i].x();
+        ymax = ymax > t.v[i].y() ? ymax : t.v[i].y();
     }
-    xmin = xminf;
-    xmax = xmaxf +1;
-    ymin = yminf;
-    ymax = ymaxf +1;
-
     // TODO: From your HW3, get the triangle rasterization code.
     // TODO: Inside your rasterization loop:
     //    * v[i].w() is the vertex view space depth value z.
@@ -301,9 +292,9 @@ void rst::rasterizer::rasterize_triangle(const Triangle& t, const std::array<Eig
     // float zp = alpha * v[0].z() / v[0].w() + beta * v[1].z() / v[1].w() + gamma * v[2].z() / v[2].w();
     // zp *= Z;
 
-    for(int i = xmin;i<xmax;i++)
+    for(int i = int(xmin);i<int(xmax+1);i++)
     {
-        for(int j = ymin;j<ymax;j++)
+        for(int j = int(ymin);j<int(ymax+1);j++)
         {
             if(insideTriangle(i+0.5,j+0.5,t.v)) 
             {
@@ -314,7 +305,7 @@ void rst::rasterizer::rasterize_triangle(const Triangle& t, const std::array<Eig
             float zp = alpha * v[0].z() / v[0].w() + beta * v[1].z() / v[1].w() + gamma * v[2].z() / v[2].w();
             zp*=Z;
 
-            if(zp < depth_buf[get_index(i,j)])
+            if(zp > depth_buf[get_index(i,j)])
             {
                 depth_buf[get_index(i,j)] = zp;
                 auto interpolated_color = interpolate(alpha, beta, gamma, t.color[0], t.color[1], t.color[2], 1);
@@ -368,7 +359,7 @@ void rst::rasterizer::clear(rst::Buffers buff)
     }
     if ((buff & rst::Buffers::Depth) == rst::Buffers::Depth)
     {
-        std::fill(depth_buf.begin(), depth_buf.end(), std::numeric_limits<float>::infinity());
+        std::fill(depth_buf.begin(), depth_buf.end(), -std::numeric_limits<float>::infinity());
     }
 }
 

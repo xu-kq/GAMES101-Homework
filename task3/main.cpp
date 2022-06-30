@@ -53,13 +53,13 @@ Eigen::Matrix4f get_projection_matrix(float eye_fov, float aspect_ratio, float z
     Eigen::Matrix4f projection = Eigen::Matrix4f::Identity();
 
     float t, b, l, r, n, f;
-
-    t = -std::tan(eye_fov / 180.f * MY_PI / 2) * zNear;
+    float angle = eye_fov * MY_PI  / 180 / 2;
+    t = zNear* std::tan(angle) ;
     b = -t;
-    l = aspect_ratio * b;
-    r = -l;
-    n = zNear;
-    f = zFar;
+    r = t * aspect_ratio ;
+    l = -r;
+    n = -zNear;
+    f = -zFar;
 
     Eigen::Matrix4f perspective;
     Eigen::Matrix4f orthographic;
@@ -68,9 +68,9 @@ Eigen::Matrix4f get_projection_matrix(float eye_fov, float aspect_ratio, float z
         0, n, 0, 0,
         0, 0, n + f, -n * f,
         0, 0, 1, 0;
-    orthographic << 2.f / (r - l), 0, 0, -(l + r) / 2,
-        0, 2.f / (t - b), 0, -(t + b) / 2,
-        0, 0, 2.f / (n - f), -(n + f) / 2,
+    orthographic << 2 / (r - l), 0, 0, -(l + r) / (r-l),
+        0, 2 / (t - b), 0, -(t + b) / (t-b),
+        0, 0, 2 / (n - f), -(n + f) / (n-f),
         0, 0, 0, 1;
     projection = orthographic * perspective;
     return projection;
@@ -195,12 +195,11 @@ Eigen::Vector3f phong_fragment_shader(const fragment_shader_payload& payload)
 
         r = (point - light.position).norm();
         ambient = ka.cwiseProduct(amb_light_intensity);
-        diffuse = kd.cwiseProduct((light.intensity / r * r) * std::max(0.f, l.dot(normal)));
-        specular = ks.cwiseProduct((light.intensity / r * r) * std::pow(std::max(0.f, h.dot(normal)), p));
+        diffuse = kd.cwiseProduct((light.intensity / (r * r)) * std::max(0.f, l.dot(normal)));
+        specular = ks.cwiseProduct((light.intensity / (r * r)) * std::pow(std::max(0.f, h.dot(normal)), p));
 
-        result_color +=  diffuse + specular;
+        result_color +=  diffuse + specular + ambient;
     }
-    result_color += ambient;
 
     return result_color * 255.f;
 }
@@ -240,15 +239,54 @@ Eigen::Vector3f displacement_fragment_shader(const fragment_shader_payload& payl
     // Position p = p + kn * n * h(u,v)
     // Normal n = normalize(TBN * ln)
 
+    auto n = normal;
+    Eigen::Vector3f t, b;
+    t << n.x()*n.y()/std::sqrt(n.x()*n.x() + n.z()*n.z()), std::sqrt(n.x()*n.x() + n.z()*n.z()), n.z()*n.y()/std::sqrt(n.x()*n.x()+n.z()*n.z());
+    b = n.cross(t);
+
+    Eigen::Matrix3f TBN;
+    TBN << t,b,n;
+    if (payload.texture)
+    {
+        Eigen::Vector2f tex_coords(payload.tex_coords);
+        float w = payload.texture->width,
+              h = payload.texture->height,
+              u = tex_coords[0],
+              v = tex_coords[1];
+        float dU,dV;
+        if(u+1.w > 1)
+            dU = kh * kn * (payload.texture->getColor(u, v).norm() - payload.texture->getColor(u-1./w, v).norm());
+        else
+            dU = kh * kn * (payload.texture->getColor(u+1./w, v).norm() - payload.texture->getColor(u, v).norm());
+        if(v+1./h > 1)
+            dV = kh * kn * (payload.texture->getColor(u, v).norm() - payload.texture->getColor(u, v-1./h).norm());
+        else
+            dV = kh * kn * (payload.texture->getColor(u, v+1./h).norm() - payload.texture->getColor(u, v).norm());
+        Eigen::Vector3f ln{-dU, -dV, 1};
+        normal = (TBN*ln).normalized();
+        point = point + kn * n * payload.texture->getColor(u, v).norm();
+    }
 
     Eigen::Vector3f result_color = {0, 0, 0};
+    Eigen::Vector3f ambient, diffuse, specular;
+    Eigen::Vector3f l, v, h;
+    float r;
 
     for (auto& light : lights)
     {
         // TODO: For each light source in the code, calculate what the *ambient*, *diffuse*, and *specular* 
         // components are. Then, accumulate that result on the *result_color* object.
+        l = (light.position - point).normalized();
+        v = (eye_pos - point).normalized();
+        h = (l + v).normalized();
+        normal = normal.normalized();
 
+        r = (point - light.position).norm();
+        ambient = ka.cwiseProduct(amb_light_intensity);
+        diffuse = kd.cwiseProduct((light.intensity / (r * r)) * std::max(0.f, l.dot(normal)));
+        specular = ks.cwiseProduct((light.intensity / (r * r)) * std::pow(std::max(0.f, h.dot(normal)), p));
 
+        result_color +=  diffuse + specular + ambient;
     }
 
     return result_color * 255.f;
@@ -288,6 +326,33 @@ Eigen::Vector3f bump_fragment_shader(const fragment_shader_payload& payload)
     // Vector ln = (-dU, -dV, 1)
     // Normal n = normalize(TBN * ln)
 
+    auto n = normal;
+    Eigen::Vector3f t, b;
+    t << n.x()*n.y()/std::sqrt(n.x()*n.x() + n.z()*n.z()), std::sqrt(n.x()*n.x() + n.z()*n.z()), n.z()*n.y()/std::sqrt(n.x()*n.x()+n.z()*n.z());
+    b = n.cross(t);
+
+    Eigen::Matrix3f TBN;
+    TBN << t,b,n;
+    if (payload.texture)
+    {
+        Eigen::Vector2f tex_coords(payload.tex_coords);
+        float w = payload.texture->width,
+              h = payload.texture->height,
+              u = tex_coords[0],
+              v = tex_coords[1];
+        float dU,dV;
+        if(u+1.w > 1)
+            dU = kh * kn * (payload.texture->getColor(u, v).norm() - payload.texture->getColor(u-1./w, v).norm());
+        else
+            dU = kh * kn * (payload.texture->getColor(u+1./w, v).norm() - payload.texture->getColor(u, v).norm());
+        if(v+1./h > 1)
+            dV = kh * kn * (payload.texture->getColor(u, v).norm() - payload.texture->getColor(u, v-1./h).norm());
+        else
+            dV = kh * kn * (payload.texture->getColor(u, v+1./h).norm() - payload.texture->getColor(u, v).norm());
+        Eigen::Vector3f ln{-dU, -dV, 1};
+        normal = (TBN*ln).normalized();
+    }
+    
 
     Eigen::Vector3f result_color = {0, 0, 0};
     result_color = normal;
@@ -322,7 +387,7 @@ int main(int argc, const char** argv)
             }
             TriangleList.push_back(t);
         }
-    }
+    } 
 
     rst::rasterizer r(700, 700);
 
@@ -360,7 +425,7 @@ int main(int argc, const char** argv)
         }
         else if (argc == 3 && std::string(argv[2]) == "displacement")
         {
-            std::cout << "Rasterizing using the bump shader\n";
+            std::cout << "Rasterizing using the dispacement shader\n";
             active_shader = displacement_fragment_shader;
         }
     }
