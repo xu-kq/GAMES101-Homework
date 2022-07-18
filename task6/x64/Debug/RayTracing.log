@@ -1,0 +1,8 @@
+﻿  main.cpp
+F:\Microsoft Visual Studio\Community 2022\VC\Tools\MSVC\14.32.31326\include\memory(3423,56): warning C4244: 'argument': conversion from '_Ty' to 'float', possible loss of data
+          with
+          [
+              _Ty=int
+          ]
+C:\Users\xukq\Desktop\outer\graphics\assignment\PA6\Assignment6\main.cpp(19): message : see reference to function template instantiation 'std::unique_ptr<Light,std::default_delete<Light>> std::make_unique<Light,Vector3f,int,0>(Vector3f &&,int &&)' being compiled
+  RayTracing.vcxproj -> C:\Users\xukq\Desktop\outer\graphics\assignment\PA6\Assignment6\x64\Debug\RayTracing.exe
