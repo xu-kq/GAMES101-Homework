@@ -42,7 +42,7 @@ Eigen::Matrix4f get_projection_matrix(float eye_fov, float aspect_ratio,
 {
     // Students will implement this function
 
-    Eigen::Matrix4f projection = Eigen::Matrix4f::Identity();
+    Eigen::Matrix4f perspective = Eigen::Matrix4f::Identity();
 
     // TODO: Implement this function
     // Create the projection matrix for the given parameters.
@@ -59,15 +59,44 @@ Eigen::Matrix4f get_projection_matrix(float eye_fov, float aspect_ratio,
     d = -t;
     l = -t * aspect_ratio;
     r = -l;
-    projection << n, 0, 0, 0,
+    perspective << n, 0, 0, 0,
                   0, n, 0, 0, 
                   0, 0, n + f, -n * f, 
                   0, 0, 1, 0;
-    orthographic << 2 / (r - l), 0, 0, - (l + r) / 2,
-        0, 2 / (t - d), 0, - (t + d) / 2,
-        0, 0, 2 / (n - f), - (n + f) / 2,
+    orthographic << 2 / (r - l), 0, 0, - (l + r) / (r - l),
+        0, 2 / (t - d), 0, - (t + d) / (t - d),
+        0, 0, 2 / (n - f), - (n + f) / (n - f),
         0, 0, 0, 1;
-    return orthographic * projection;
+    return orthographic * perspective;
+}
+Eigen::Matrix4f get_rotation(Vector3f axis, float angle) 
+{
+    // Implement the Rodrigues' Rotation
+    angle = angle / 180 * MY_PI;
+    Eigen::Matrix4f R = Eigen::Matrix4f::Identity();
+    Eigen::Matrix3f I, N, Omega;
+    
+    I = Eigen::Matrix3f::Identity();
+    N = axis * axis.transpose();
+    Omega << 0, -axis.z(), axis.y(),
+        axis.z(), 0, -axis.x(),
+        -axis.y(), axis.x(), 0;
+
+    R(Eigen::seq(0, 2), Eigen::seq(0, 2)) = std::cos(angle) * I + (1. - std::cos(angle)) * N + std::sin(angle) * Omega;
+    return R;
+}
+Eigen::Matrix4f get_model_translate(Eigen::Vector3f v)
+{
+    Eigen::Matrix4f model = Eigen::Matrix4f::Identity();
+
+    // TODO: Implement this function
+    // Create the model matrix for rotating the triangle around the Z axis.
+    // Then return it.
+    model << 1, 0, 0, v.x(),
+        0, 1, 0, v.y(),
+        0, 0, 1, v.z(),
+        0, 0, 0, 1;
+    return model;
 }
 
 int main(int argc, const char** argv)
@@ -115,11 +144,15 @@ int main(int argc, const char** argv)
 
         return 0;
     }
-
+    
+    float theta = 0;
+    Eigen::Vector3f axis(1, 0, 0);
+    Eigen::Vector3f v(0, 0, 2);
     while (key != 27) {
         r.clear(rst::Buffers::Color | rst::Buffers::Depth);
 
-        r.set_model(get_model_matrix(angle));
+        r.set_model(get_model_translate(-v) * get_rotation(axis, theta)
+                        * get_model_translate(v) * get_model_matrix(angle));
         r.set_view(get_view_matrix(eye_pos));
         r.set_projection(get_projection_matrix(45, 1, 0.1, 50));
 
@@ -137,6 +170,12 @@ int main(int argc, const char** argv)
         }
         else if (key == 'd') {
             angle -= 10;
+        }
+        else if (key == 'w') {
+            theta -= 10;
+        }
+        else if (key == 's') {
+            theta += 10;
         }
     }
 

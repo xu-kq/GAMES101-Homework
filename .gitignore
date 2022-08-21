@@ -1,9 +1,11 @@
 # output
 /.vs
 /out
+/build
 
 # git
 .gitattributes
+CMakeSettings.json
 
 # pdf
 Assignment1.pdf
