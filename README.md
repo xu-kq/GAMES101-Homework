@@ -82,4 +82,4 @@ $$
 
 For proof, [here](https://sites.cs.ucsb.edu/~lingqi/teaching/resources/GAMES101_Lecture_04_supp.pdf) is for a hint  given by Prof. Yan. 
 
-Also, be ware of the consitence between $\bf{n}\times() $ and $\bf{\Omega(n)}\cdot()$.
+Also, be ware of the consitence between $\bf{n}\times()$ and $\bf{\Omega(n)}\cdot()$.
