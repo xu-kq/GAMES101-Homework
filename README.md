@@ -2,6 +2,7 @@
 
 ##  **1 Implementation of Model Matrix**
 **Rotational matrix** along the **z-axis**:
+
 $$
         \bf{M}=\bf{R}_z(\alpha)=
  \left[
@@ -19,6 +20,7 @@ $$
 ### **2.1 Perspective Matrix:**
 
 squish the ***frustum*** into a ***cuboid:***
+
 $$
 Pers=
  \left[
@@ -37,6 +39,7 @@ First, ***translate***, next, ***scale***, then turn the ***cuboid*** into a ***
 **!! [Caution]: the order of operation!!**
 
 Finally, we get:
+
 $$
 Orth=scale * trans
  \left[
@@ -58,11 +61,14 @@ return ortho * Pers;
 
 ## **4 enable z-axis rotate control by 'A' and 'D'**
  ![alpha](./image/alpha.png)
+
 This result is led by model tranformation
 
 ## **5 rotate along any axis (enable x-axis rotate control by 'A' and 'D')**
  ![theta](./image/theta.png)
+
 An x-axis rotation controlled by the **Rodrigues' Formula:**
+
 $$
 \bf{R}(\bf{\vec{n}},\alpha) = \cos{\alpha}\bf{I} + (1 - \cos{\alpha})\bf{n}\bf{n^T} + \sin{\alpha}
  \left[
@@ -73,6 +79,7 @@ $$
   \end{matrix}
 \right]
 $$
+
 For proof, [here](https://sites.cs.ucsb.edu/~lingqi/teaching/resources/GAMES101_Lecture_04_supp.pdf) is for a hint  given by Prof. Yan. 
 
 Also, be ware of the consitence between $\bf{n}\times() $ and $\bf{\Omega(n)}\cdot()$.
