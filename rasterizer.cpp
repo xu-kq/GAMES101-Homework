@@ -40,10 +40,10 @@ auto to_vec4(const Eigen::Vector3f& v3, float w = 1.0f)
 }
 
 
-static bool insideTriangle(int x, int y, const Vector3f* _v)
+static bool insideTriangle(float x, float y, const Vector3f* _v)
 {   
     // TODO : Implement this function to check if the point (x, y) is inside the triangle represented by _v[0], _v[1], _v[2]
-    Eigen::Vector3f p(0.5 + x, 0.5 + y, 1);
+    Eigen::Vector3f p(x, y, 1);
     Vector3f vert[3];
     for (int i = 0; i < 3; ++i) {
         vert[i].x() = _v[i].x();
@@ -142,26 +142,38 @@ void rst::rasterizer::rasterize_triangle(const Triangle& t) {
     //z_interpolated *= w_reciprocal;
 
     // TODO : set the current pixel (use the set_pixel function) to the color of the triangle (use getColor function) if it should be painted.
+    int N = 1;
+    float xincr, yincr;
+    xincr = yincr = 1.f / (N + 1);
+    int xlow = std::max(0, int(std::round(xmin))),
+        ylow = std::max(0, int(std::round(ymin))),
+        xupp = std::min(width, int(std::round(xmax))),
+        yupp = std::min(height, int(std::round(ymax)));
     float x, y;
-    for (int j = 0; j < height; ++j) {
-        for (int i = 0; i < width; ++i) {
-            x = i+0.5;
-            y = j+0.5;
-            if (x < xmin || x > xmax || y < ymin || y > ymax) {
-                continue;
-            }
-            if (insideTriangle(i, j, t.v)) {
-                auto [alpha, beta, gamma] = computeBarycentric2D(x, y, t.v);
-                float w_reciprocal = 1.0 / (alpha / v[0].w() + beta / v[1].w() + gamma / v[2].w());
-                float z_interpolated = alpha * v[0].z() / v[0].w() + beta * v[1].z() / v[1].w() + gamma * v[2].z() / v[2].w();
-                z_interpolated *= w_reciprocal;
-                if (z_interpolated > depth_buf[get_index(i, j)]) {
-                    depth_buf[get_index(i, j)] = z_interpolated;
-                    // should sent a index of pixel, instead of the centor coord. of pixel.
-                    // or the round error would cause a 350 pixels off-set in x-axis.
-                    set_pixel({ float(i), float(j), 0}, t.getColor());
+    for (int j = ylow; j < yupp; ++j) {
+        for (int i = xmin; i < xupp; ++i) {
+
+            std::vector<float> pixel_depth(N * N);
+            for(int ni = 0; ni < N; ++ni) {
+                for (int nj = 0; nj < N; ++nj) {
+                    x = i + xincr * (ni + 1);
+                    y = j + yincr * (nj + 1);
+                    if (insideTriangle(x, y, t.v)) {
+                        auto [alpha, beta, gamma] = computeBarycentric2D(x, y, t.v);
+                        float w_reciprocal = 1.0 / (alpha / v[0].w() + beta / v[1].w() + gamma / v[2].w());
+                        float z_interpolated = alpha * v[0].z() / v[0].w() + beta * v[1].z() / v[1].w() + gamma * v[2].z() / v[2].w();
+                        z_interpolated *= w_reciprocal;
+                        if (z_interpolated > depth_buf[get_index(i, j)]) {
+                            depth_buf[get_index(i, j)] = z_interpolated;
+                            // should sent a index of pixel, instead of the centor coord. of pixel.
+                            // or the round error would cause a 350 pixels off-set in x-axis.
+                            set_pixel({ float(i), float(j), 0 }, t.getColor());
+                        }
+                    }
                 }
             }
+
+
         }
     }
 }
