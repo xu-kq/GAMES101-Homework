@@ -142,9 +142,11 @@ void rst::rasterizer::rasterize_triangle(const Triangle& t) {
     //z_interpolated *= w_reciprocal;
 
     // TODO : set the current pixel (use the set_pixel function) to the color of the triangle (use getColor function) if it should be painted.
-    int N = 1;
+
     float xincr, yincr;
-    xincr = yincr = 1.f / (N + 1);
+    xincr = yincr = 1.f / N;
+    float half_xincr, half_yincr;
+    half_xincr = half_yincr = xincr / 2;
     int xlow = std::max(0, int(std::round(xmin))),
         ylow = std::max(0, int(std::round(ymin))),
         xupp = std::min(width, int(std::round(xmax))),
@@ -152,28 +154,27 @@ void rst::rasterizer::rasterize_triangle(const Triangle& t) {
     float x, y;
     for (int j = ylow; j < yupp; ++j) {
         for (int i = xmin; i < xupp; ++i) {
-
-            std::vector<float> pixel_depth(N * N);
+            Eigen::Vector3f color(0, 0, 0);
             for(int ni = 0; ni < N; ++ni) {
                 for (int nj = 0; nj < N; ++nj) {
-                    x = i + xincr * (ni + 1);
-                    y = j + yincr * (nj + 1);
+                    x = i + half_xincr + xincr * ni;
+                    y = j + half_yincr + yincr * nj;
                     if (insideTriangle(x, y, t.v)) {
                         auto [alpha, beta, gamma] = computeBarycentric2D(x, y, t.v);
                         float w_reciprocal = 1.0 / (alpha / v[0].w() + beta / v[1].w() + gamma / v[2].w());
                         float z_interpolated = alpha * v[0].z() / v[0].w() + beta * v[1].z() / v[1].w() + gamma * v[2].z() / v[2].w();
                         z_interpolated *= w_reciprocal;
-                        if (z_interpolated > depth_buf[get_index(i, j)]) {
-                            depth_buf[get_index(i, j)] = z_interpolated;
-                            // should sent a index of pixel, instead of the centor coord. of pixel.
-                            // or the round error would cause a 350 pixels off-set in x-axis.
-                            set_pixel({ float(i), float(j), 0 }, t.getColor());
+                        if (z_interpolated > ss_depth_buf[get_ss_index(i, j, ni, nj)]) {
+                            ss_depth_buf[get_ss_index(i, j, ni, nj)] = z_interpolated;
+                            ss_frame_buf[get_ss_index(i, j, ni, nj)] = t.getColor();
                         }
                     }
+                    color += ss_frame_buf[get_ss_index(i, j, ni, nj)];
                 }
             }
-
-
+            set_pixel({ float(i), float(j), 0 }, color /= N * N);
+            //float percent = 1.f * cnt / N / N;
+            //set_pixel({ float(i), float(j), 0 }, t.getColor() * percent + frame_buf[get_index(i, j)] * (1-percent));
         }
     }
 }
@@ -198,22 +199,33 @@ void rst::rasterizer::clear(rst::Buffers buff)
     if ((buff & rst::Buffers::Color) == rst::Buffers::Color)
     {
         std::fill(frame_buf.begin(), frame_buf.end(), Eigen::Vector3f{0, 0, 0});
+        std::fill(ss_frame_buf.begin(), ss_frame_buf.end(), Eigen::Vector3f{ 0, 0, 0 });
     }
     if ((buff & rst::Buffers::Depth) == rst::Buffers::Depth)
     {
-        std::fill(depth_buf.begin(), depth_buf.end(), std::numeric_limits<float>::lowest());
+        //std::fill(depth_buf.begin(), depth_buf.end(), std::numeric_limits<float>::lowest());
+        std::fill(ss_depth_buf.begin(), ss_depth_buf.end(), std::numeric_limits<float>::lowest());
     }
 }
 
-rst::rasterizer::rasterizer(int w, int h) : width(w), height(h)
+rst::rasterizer::rasterizer(int w, int h, int n = 1) : width(w), height(h), N(n)
 {
     frame_buf.resize(w * h);
-    depth_buf.resize(w * h);
+    ss_frame_buf.resize(w * h * N * N);
+
+    //depth_buf.resize(w * h);
+    ss_depth_buf.resize(w * h * N * N);
 }
 
 int rst::rasterizer::get_index(int x, int y)
 {
     return (height-1-y)*width + x;
+}
+
+int rst::rasterizer::get_ss_index(int x, int y, int ni, int nj)
+{
+    return ((height - 1 - y) * width + x) * N * N + ni * N + nj;
+
 }
 
 void rst::rasterizer::set_pixel(const Eigen::Vector3f& point, const Eigen::Vector3f& color)
