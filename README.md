@@ -53,8 +53,7 @@ It can be seperated in three part.
 Diffuse discrbes the scattering light.
 
 $$
-    \bf{L_d} = k_d(\bf{I}/R^2)\bf{(\vec{n}\cdot\vec{l})}
-
+    \bf{L_d} = k_d(\bf{I}/R^2)\max(0,\bf{(\vec{n}\cdot\vec{l})})
 $$
 
 The relation between light direction and surface normal, would decide how many energy recieved. It also called ***Lambert's Law***.
@@ -62,7 +61,7 @@ The relation between light direction and surface normal, would decide how many e
 ### 2.2 Specular Term
 
 $$
-    \bf{L_s} = k_s(\bf{I}/R^2)\bf{(\vec{n}\cdot\vec{h})}^p
+    \bf{L_s} = k_s(\bf{I}/R^2)\max(0, \bf{(\vec{n}\cdot\vec{h})}^p)
 $$
 
 $\bf\vec{h}$, the halfway vector, means the a bisector(normalized) of angle which is consist of view direction, light direction and shading point. p is a parameter decides the concentration of specular reflection domain.
@@ -79,9 +78,11 @@ This is non-physical but easy to understand. Adding a constant to fit the lighti
 Tips: 
 1. Shading is local. Shading ≠ Shadow.
 2. Phong shading only behaves different from Blinn-Phong stratege during the cosine value in specular term:
+
 $$
     \bf{L_s} = k_s(\bf{I}/R^2)\bf{(\vec{r}\cdot\vec{v})}^p
 $$
+
 $\bf\vec{r}$ and $\bf\vec{v}$ indicate the unit vector of **reflection direction** and **view direction**, respectively.
 
 ### 2.4 ***Example of Blinn-Phong Shader***
