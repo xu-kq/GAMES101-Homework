@@ -33,8 +33,8 @@ void naive_bezier(const std::vector<cv::Point2f> &points, cv::Mat &window)
 cv::Point2f recursive_bezier(const std::vector<cv::Point2f> &control_points, float t) 
 {
     // TODO: Implement de Casteljau's algorithm
-    if (control_points.size() == 2) {
-        return cv::Point2f(t * control_points[0] + (1-t) * control_points[1]);
+    if (control_points.size() == 1) {
+        return cv::Point2f(control_points[0]);
     }
     
     std::vector<cv::Point2f> res;
@@ -48,30 +48,19 @@ void bezier(const std::vector<cv::Point2f> &control_points, cv::Mat &window)
 {
     // TODO: Iterate through all t = 0 to t = 1 with small steps, and call de Casteljau's 
     // recursive Bezier algorithm.
+    float inv_sqrt2 = 1.f / std::sqrt(2);
     for (double t = 0.0; t <= 1.0; t += 0.001) {
         auto point = recursive_bezier(control_points,t);
-        window.at<cv::Vec3b>(point.y, point.x)[1] = 255;
-    }
-
-    float width = window.cols,
-          height = window.rows;
-
-    cv::Mat res = cv::Mat(width, height, CV_8UC3, cv::Scalar(0));
-    cv::cvtColor(res, res, cv::COLOR_BGR2RGB);
-    
-    int n = 1;
-    float n2 = n * n;
-    for (int i = n; i < width - n; ++i) {
-        for (int j = n; j < height - n; ++j) {
-            for (int dx = -n; dx <= n; ++dx) {
-                for (int dy = -n; dy <= n; ++dy) {
-                    res.at<cv::Vec3b>(j, i) += window.at<cv::Vec3b>(j + dy, i + dx);
-                }
+        for (int dx = -1; dx <= 1; ++dx) {
+            for (int dy = -1; dy <= 1; ++dy) {
+                    float x = point.x - int(point.x) - 0.5f;
+                    float y = point.y - int(point.y) - 0.5f;
+                    float d = std::sqrt((x - dx) * (x - dx) + (y - dy) * (y - dy));
+                    float ratio = 1.f - std::sqrt(2) / 3.f * d;
+                    window.at<cv::Vec3b>(point.y + dy, point.x + dx)[1] = std::fmax(window.at<cv::Vec3b>(point.y + dy, point.x + dx)[1], 255.f *ratio);
             }
-            res.at<cv::Vec3b>(j, i) / n2;
         }
     }
-    window = res;
 }
 
 int main() 
