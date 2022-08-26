@@ -122,8 +122,29 @@ public:
         std::vector<Object*> ptrs;
         for (auto& tri : triangles)
             ptrs.push_back(&tri);
+        
 
-        bvh = new BVHAccel(ptrs);
+        // BAV or SAH
+        BVHAccel::SplitMethod splitMethod = BVHAccel::SplitMethod::SAH;
+        time_t start, stop;
+        time(&start);
+
+        bvh = new BVHAccel(ptrs, 1, splitMethod);
+
+        time(&stop);
+        double diff = difftime(stop, start);
+        int hrs = (int)diff / 3600;
+        int mins = ((int)diff / 60) - (hrs * 60);
+        int secs = (int)diff - (hrs * 3600) - (mins * 60);
+
+        if (splitMethod == BVHAccel::SplitMethod::NAIVE)
+            printf(
+                "\rBVH Generation complete: \nTime Taken: %i hrs, %i mins, %i secs\n\n",
+                hrs, mins, secs);
+        else
+            printf(
+                "\rSAH Generation complete: \nTime Taken: %i hrs, %i mins, %i secs\n\n",
+                hrs, mins, secs);
     }
 
     bool intersect(const Ray& ray) { return true; }
